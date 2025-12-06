@@ -15,9 +15,9 @@ except ImportError:
     sys.exit(1)
 
 # ==============================================================================
-# 1. 配置和模型选择 (3090 Ti 优化)
+# 1. 配置和模型选择
 # ==============================================================================
-# 推荐使用 AWQ 量化版本 (6GB 模型权重)，以最大化 3090 Ti 的 24GB 显存利用率
+# 使用 AWQ 量化版本 (6GB 模型权重)，
 MODEL_PATH = "meta-llama/Meta-Llama-3-8B-Instruct" 
 
 # --- 配置模式 ---
@@ -27,7 +27,7 @@ JSON_PATH_CSV = "./knowledge_base_csv_vllm.json"
 JSON_PATH_TEST = "./knowledge_base_test_vllm.json"
 
 # ==============================================================================
-# 2. Prompt 管理器 (基于用户提供的逻辑)
+# 2. Prompt
 # ==============================================================================
 
 class PromptManager:
@@ -71,7 +71,7 @@ No violation → NONE
 
     @property
     def step1_physics_system(self):
-        # 使用用户提供的 Physics System Prompt
+        # Physics System Prompt
         return """
 [STRICT_EXTRACTION_MODE]
 You are a Cyber-Physical Security Expert. Analyze 'EVENT LOGS' + 'DIFF CONTEXT' for physical inconsistencies.
@@ -108,10 +108,8 @@ No violation → NONE
 
     def format_single_window_input(self, window_id: str, event_sequence: str, diff_vector: Dict[str, Any]) -> str:
         """格式化单个 Log 的输入，明确区分 Log 和 Diff Context。"""
-        # 使用用户提供的 format_single_window_input 逻辑
         diff_str = json.dumps(diff_vector, indent=2, ensure_ascii=False) if isinstance(diff_vector, dict) else str(diff_vector)
         
-        # NOTE: 保持与用户的格式一致，包括注释符号 #
         return f"""
 --- WINDOW ID: {window_id} ---
 
@@ -177,7 +175,7 @@ def build_prompt_batch(windows_data: Dict[str, Dict[str, Any]]) -> tuple[List[st
     return prompts_list, prompt_metadata
 
 # ==============================================================================
-# 3. 辅助函数 (复用)
+# 3. 辅助函数
 # ==============================================================================
 
 def clean_for_json(data):
@@ -203,7 +201,7 @@ def _parse_step1_output(raw_output: str) -> List[tuple]:
         if not line: continue
         
         # 使用正则表达式匹配 ['win_id', 'RULE_CODE', start_index, end_index] 结构
-        # 由于是单 Log 模式，start, end 预期为 0, 0 或其他，但我们匹配格式
+        # 由于是单 Log 模式，start, end 预期为 0, 0 或其他
         match = re.search(r'\[\s*[\'"](win_\d+)[\'"]\s*,\s*[\'"](R\d+|P\d+|M\d+|S\d+|I\d+)[\'"]\s*,\s*(\d+)\s*,\s*(\d+)\s*\]', line)
 
         if match:
@@ -357,14 +355,13 @@ def run_vllm_inference(windows: Dict[str, Dict[str, Any]], output_path: str):
     window_id_map = {win_id: data['member_log_ids'][0] for win_id, data in windows.items()}
 
     # 2. 初始化 vLLM 引擎 (3090 Ti 优化配置)
-    print(f"Initializing vLLM Engine ({MODEL_PATH}) on 3090 Ti...")
+    print(f"Initializing vLLM Engine ({MODEL_PATH}) ...")
     try:
         llm = LLM(
             model=MODEL_PATH,
             quantization="awq",
             dtype="float16",
             tensor_parallel_size=1,
-            # 💥 恢复到 0.90，充分利用 24GB 显存，实现最高批处理性能
             gpu_memory_utilization=0.90,  
             max_model_len=4096,
             trust_remote_code=True
@@ -435,7 +432,6 @@ def run_vllm_inference(windows: Dict[str, Dict[str, Any]], output_path: str):
     non_empty_logs = {k: v for k, v in knowledge_base.items() if v.get("violations")}
     print(f"Total Log IDs with at least one violation record: {len(non_empty_logs)}")
     
-    print("\n--- 示例：前 5 个非空 Log ID 的知识标签 (前 100 字符) ---")
     sample_log_ids = list(non_empty_logs.keys())[:5] 
     
     if sample_log_ids:
@@ -461,7 +457,7 @@ if __name__ == '__main__':
     # --- 测试模式配置 ---
     JSON_PATH_TEST = "./knowledge_base_test.json"
     
-    # !!! 替换为您想要测试的 Log 数据 !!!
+    # 测试的 Log 
     test_logs = [
         # Log 0
         {
@@ -477,7 +473,7 @@ if __name__ == '__main__':
                 "{""pkt arrival time_sv1"": ""incrementing"", ""SVlength_sv1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""noASDU_sv1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt1_sv1"": ""incrementing"", ""Data1_sv1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt2_sv1"": ""incrementing"", ""Data2_sv1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt3_sv1"": ""incrementing"", ""Data3_sv1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt4_sv1"": ""incrementing"", ""Data4_sv1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt5_sv1"": ""incrementing"", ""Data5_sv1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt6_sv1"": ""incrementing"", ""Data6_sv1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt7_sv1"": ""incrementing"", ""Data7_sv1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt8_sv1"": ""incrementing"", ""Data8_sv1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt9_sv1"": ""incrementing"", ""Data9_sv1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt10_sv1"": ""incrementing"", ""Data10_sv1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt11_sv1"": ""incrementing"", ""Data11_sv1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt12_sv1"": ""incrementing"", ""Data12_sv1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt13_sv1"": ""incrementing"", ""Data13_sv1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""pkt arrival time_sv2"": ""incrementing"", ""SVlength_sv2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""noASDU_sv2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt1_sv2"": ""incrementing"", ""Data1_sv2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt2_sv2"": ""incrementing"", ""Data2_sv2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt3_sv2"": ""incrementing"", ""Data3_sv2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt4_sv2"": ""incrementing"", ""Data4_sv2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt5_sv2"": ""incrementing"", ""Data5_sv2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt6_sv2"": ""incrementing"", ""Data6_sv2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt7_sv2"": ""incrementing"", ""Data7_sv2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt8_sv2"": ""incrementing"", ""Data8_sv2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt9_sv2"": ""incrementing"", ""Data9_sv2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt10_sv2"": ""incrementing"", ""Data10_sv2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt11_sv2"": ""incrementing"", ""Data11_sv2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt12_sv2"": ""incrementing"", ""Data12_sv2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""smpCnt13_sv2"": ""incrementing"", ""Data13_sv2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""GOOSElength_GOOSE1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""Timeallowedtolive_GOOSE1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""t_GOOSE1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""stNum_GOOSE1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""sqNum_GOOSE1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""confRev_GOOSE1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""num of data_GOOSE1"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""GOOSElength_GOOSE2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""Timeallowedtolive_GOOSE2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""t_GOOSE2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""stNum_GOOSE2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""sqNum_GOOSE2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""confRev_GOOSE2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""num of data_GOOSE2"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""GOOSElength_GOOSE3"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""Timeallowedtolive_GOOSE3"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""t_GOOSE3"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""stNum_GOOSE3"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""sqNum_GOOSE3"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""confRev_GOOSE3"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}, ""num of data_GOOSE3"": {""delta"": [0.0, 0.0, 0.0], ""sem"": ""steady""}}"
             }
         },
-        # Log 3
+        # Log 2
         {
             "Event_sequence": "GOOSE_PKT (ts=1725084167.383, src=20:17:01:16:f0:11, APPID=0x3103, stNum=1, sqNum=36, GOOSElength_GOOSE3=165, gocbRef_GOOSE3=QUTZS_FDRPIOC/LLN0$GO$gcb_1, goID_GOOSE3=gcb_1, simulation_GOOSE3=False, confRev_GOOSE3=200, ndsCom_GOOSE3=False, num of data_GOOSE3=14, data_GOOSE3=[False, 0, True, 0, False, 0, False, 0, False, 0, False, 0, False, 0]); GOOSE_PKT (ts=1725084166.782, src=20:17:01:16:f0:32, APPID=0x3102, stNum=1, sqNum=36, GOOSElength_GOOSE2=146, gocbRef_GOOSE2=QUTZS_XFMR2PIOC/LLN0$GO$gcb_1, goID_GOOSE2=gcb_1, simulation_GOOSE2=False, confRev_GOOSE2=200, ndsCom_GOOSE2=False, num of data_GOOSE2=8, data_GOOSE2=[True, 0, False, 0, False, 0, True, 0]); GOOSE_PKT (ts=1725084187.028, src=20:17:01:16:f0:23, APPID=0x3101, stNum=2, sqNum=19, GOOSElength_GOOSE1=146, gocbRef_GOOSE1=QUTZS_XFMR1PIOC/LLN0$GO$gcb_1, goID_GOOSE1=gcb_1, simulation_GOOSE1=False, confRev_GOOSE1=200, ndsCom_GOOSE1=False, num of data_GOOSE1=8, data_GOOSE1=[True, 0, True, 0, True, 0, False, 0]); SV_PKT (ts=1725084200.89885, src=20:17:01:16:f2:54, APPID=0x4001, SVlength_sv1=509, noASDU_sv1=13, svID1_sv1=66kV1, smpCnt1_sv1=698, Data1_sv1=0, svID2_sv1=66kV2, smpCnt2_sv1=698, Data2_sv1=0, svID3_sv1=66kV3, smpCnt3_sv1=698, Data3_sv1=35, svID4_sv1=XFMR1W1, smpCnt4_sv1=698, Data4_sv1=0, svID5_sv1=XFMR2W1, smpCnt5_sv1=698, Data5_sv1=35, svID6_sv1=XFMR1W2, smpCnt6_sv1=698, Data6_sv1=0, svID7_sv1=XFMR2W2, smpCnt7_sv1=698, Data7_sv1=60, svID8_sv1=CB_XFMR1, smpCnt8_sv1=698, Data8_sv1=0, svID9_sv1=CB_XFMR2, smpCnt9_sv1=698, Data9_sv1=104, svID10_sv1=F_66kV1, smpCnt10_sv1=698, Data10_sv1=0, svID11_sv1=F_66kV2, smpCnt11_sv1=698, Data11_sv1=0, svID12_sv1=F_XFMR1, smpCnt12_sv1=698, Data12_sv1=0, svID13_sv1=F_XFMR2, smpCnt13_sv1=698, Data13_sv1=0); SV_PKT (ts=1725084200.920275, src=20:17:01:16:f2:54, APPID=0x4002, SVlength_sv2=491, noASDU_sv2=13, svID1_sv2=22kV1, smpCnt1_sv2=691, Data1_sv2=26, svID2_sv2=22kV2, smpCnt2_sv2=691, Data2_sv2=52, svID3_sv2=22kV3, smpCnt3_sv2=691, Data3_sv2=26, svID4_sv2=FDR1, smpCnt4_sv2=691, Data4_sv2=26, svID5_sv2=FDR2, smpCnt5_sv2=691, Data5_sv2=26, svID6_sv2=FDR3, smpCnt6_sv2=691, Data6_sv2=26, svID7_sv2=FDR4, smpCnt7_sv2=691, Data7_sv2=26, svID8_sv2=F_22kV1, smpCnt8_sv2=691, Data8_sv2=0, svID9_sv2=F_22kV2, smpCnt9_sv2=691, Data9_sv2=0, svID10_sv2=F_FDR1, smpCnt10_sv2=691, Data10_sv2=0, svID11_sv2=F_FDR2, smpCnt11_sv2=691, Data11_sv2=0, svID12_sv2=F_FDR3, smpCnt12_sv2=691, Data12_sv2=0, svID13_sv2=F_FDR4, smpCnt13_sv2=691, Data13_sv2=0)",
             "Diff_vector": {
