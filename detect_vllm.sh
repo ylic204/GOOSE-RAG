@@ -2,16 +2,16 @@
 
 # --- 1. 配置参数 ---
 # 输入文件路径
-INPUT_CSV="Datasets/Processed dataset (supervised ML)/9111a.csv"
+INPUT_CSV="Datasets/Processed dataset (supervised ML)/921a.csv"
 # 输出文件路径
-OUTPUT_JSON="./knowledge_base_vllm.json"
+OUTPUT_JSON="./921a.json"
 # 模型路径 (可以是 HuggingFace ID 或 本地绝对路径)
 # 注意：vLLM 使用的是 HuggingFace ID，不是 Ollama ID
 MODEL_PATH="Qwen/Qwen2.5-7B-Instruct"
 
 # 显卡设置
 # 使用所有 4 张卡 (0,1,2,3)
-export CUDA_VISIBLE_DEVICES=1,2,3,4
+export CUDA_VISIBLE_DEVICES=4,5,6,7
 
 
 # --- 3. 运行 Python 脚本 ---
